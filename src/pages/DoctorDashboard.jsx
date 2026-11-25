@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { enqueueOfflineAction } from '../lib/syncManager';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { subscribeToLoRaRadio, broadcastLoRaPacket } from '../lib/loraRadio';
 import {
   User, Activity, FileText, History, ChevronRight, CheckCircle, Save,
   Stethoscope, Wifi, WifiOff, Users, X, BookOpen, ClipboardList, Radio,
@@ -121,19 +122,17 @@ export default function DoctorDashboard() {
   }, [radioPackets]);
 
   useEffect(() => {
-    const radioChannel = new BroadcastChannel('lora_radio');
-    radioChannel.onmessage = (event) => {
-      if (event.data.type !== 'patient') return; // Only receive patient packets
-      const currentPhc = localStorage.getItem('current_phc');
-      if (currentPhc && event.data.sender_phc === currentPhc) return; // Ignore transmissions from own PHC
+    const unsubscribe = subscribeToLoRaRadio((data) => {
+      if (data.type !== 'patient') return; // Only receive patient packets
       
       setRadioPackets(prev => {
-        const isDuplicate = prev.some(p => p.id === event.data.id && p.ts === event.data.ts);
+        const isDuplicate = prev.some(p => p.id === data.id && p.ts === data.ts);
         if (isDuplicate) return prev;
-        return [{ ...event.data, _receivedAt: new Date().toISOString() }, ...prev];
+        return [{ ...data, _receivedAt: data._receivedAt || new Date().toISOString() }, ...prev];
       });
-    };
-    return () => radioChannel.close();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -253,14 +252,12 @@ export default function DoctorDashboard() {
     // Auto-advance: notify ASHA and let the doctor preview the next patient
     const nextVisit = activeQueue.find(v => v.status === 'Waiting' && v.id !== selectedVisit.id);
     if (nextVisit) {
-      const radioChannel = new BroadcastChannel('lora_radio');
-      radioChannel.postMessage({ 
+      broadcastLoRaPacket({ 
         type: 'AUTO_ADVANCE', 
         patientId: nextVisit.patient_id,
         id: window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(),
         ts: now
       });
-      radioChannel.close();
       
       setSelectedVisitId(nextVisit.id);
     } else {

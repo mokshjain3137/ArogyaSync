@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { enqueueOfflineAction } from '../../lib/syncManager';
+import { subscribeToLoRaRadio } from '../../lib/loraRadio';
 import {
   Users, AlertTriangle, CheckCircle, ShieldAlert,
   ChevronRight, QrCode, Filter, Edit, X, Save, Stethoscope, Clock,
@@ -65,15 +66,13 @@ export function QueueManager({ onSelectQR }) {
 
   // Listen for Auto-Advance from Doctor Dashboard
   useEffect(() => {
-    const radioChannel = new BroadcastChannel('lora_radio');
-    radioChannel.onmessage = (event) => {
-      if (event.data.type === 'AUTO_ADVANCE') {
-        const patientName = patientMap[event.data.patientId]?.name || 'the next patient';
-        // The user specifically requested a "LoRa trans incoming alert"
+    const unsubscribe = subscribeToLoRaRadio((data) => {
+      if (data.type === 'AUTO_ADVANCE') {
+        const patientName = patientMap[data.patientId]?.name || 'the next patient';
         alert(`🔔 LoRa Trans Incoming Alert: The doctor has finished the previous consultation and automatically pulled ${patientName} into the room.`);
       }
-    };
-    return () => radioChannel.close();
+    });
+    return () => unsubscribe();
   }, [patientMap]);
 
   // Sort: Red > Yellow > Green, then FIFO

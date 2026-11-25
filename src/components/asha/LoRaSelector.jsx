@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
+import { broadcastLoRaPacket } from '../../lib/loraRadio';
 import {
   Radio, Send, ShieldAlert, CheckCircle2, Zap, SignalHigh,
   AlertTriangle, X, Clock, RefreshCw, Package
@@ -139,9 +140,7 @@ export function LoRaSelector() {
       const triageLabel = item.packet.type === 'patient' ? item.packet.triage : 'Inventory';
       const pId = item.packet.type === 'patient' ? item.packet.visit_id : item.packet.id;
 
-      const radioChannel = new BroadcastChannel('lora_radio');
-      radioChannel.postMessage(item.packet);
-      radioChannel.close();
+      broadcastLoRaPacket(item.packet);
 
       let newLogItem = null;
 

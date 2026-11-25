@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Radio, ShieldAlert, Cpu, CheckCircle2, RotateCcw, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { subscribeToLoRaRadio } from '../lib/loraRadio';
 
 const PacketCard = ({ pkt }) => {
   const [decompressed, setDecompressed] = useState(false);
@@ -109,26 +110,36 @@ const PacketCard = ({ pkt }) => {
 };
 
 export default function LoRaReceiver() {
-  const [packets, setPackets] = useState([]);
+  const [packets, setPackets] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lora_gateway_packets');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [isListening, setIsListening] = useState(true);
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    let radioChannel;
-    if (isListening) {
-      radioChannel = new BroadcastChannel('lora_radio');
-      radioChannel.onmessage = (event) => {
-        if (event.data.type === 'AUTO_ADVANCE') return; // Filter out internal UI signals
-        setPackets(prev => {
-          const isDuplicate = prev.some(p => p.id === event.data.id && p.ts === event.data.ts);
-          if (isDuplicate) return prev;
-          return [...prev, { ...event.data, _receivedAt: new Date().toISOString() }];
-        });
-      };
-    }
-    return () => {
-      if (radioChannel) radioChannel.close();
-    };
+    if (!isListening) return;
+
+    const unsubscribe = subscribeToLoRaRadio((packetData) => {
+      if (packetData.type === 'AUTO_ADVANCE') return; // Filter out internal UI signals
+      setPackets(prev => {
+        const isDuplicate = prev.some(p => p.id === packetData.id && p.ts === packetData.ts);
+        if (isDuplicate) return prev;
+        const updated = [...prev, { ...packetData, _receivedAt: packetData._receivedAt || new Date().toISOString() }];
+        try {
+          localStorage.setItem('lora_gateway_packets', JSON.stringify(updated.slice(-50)));
+        } catch (e) {
+          console.warn('[LoRa] Failed to sync packets to localStorage:', e);
+        }
+        return updated;
+      });
+    });
+
+    return () => unsubscribe();
   }, [isListening]);
 
   useEffect(() => {
@@ -160,7 +171,10 @@ export default function LoRaReceiver() {
               {isListening ? 'Listening' : 'Paused'}
             </button>
             <button 
-              onClick={() => setPackets([])}
+              onClick={() => {
+                localStorage.removeItem('lora_gateway_packets');
+                setPackets([]);
+              }}
               className="btn-minimal-outline text-xs px-3 py-1.5 rounded-full bg-white"
             >
               <RotateCcw size={14} /> Clear
