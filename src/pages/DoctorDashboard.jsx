@@ -24,7 +24,7 @@ const PacketCard = ({ pkt }) => {
   }, []);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className="p-4 bg-white border border-[#EAEAEA] rounded-md shadow-[0_2px_12px_rgba(0,0,0,0.02)]"
@@ -70,7 +70,7 @@ const PacketCard = ({ pkt }) => {
                   Decoded
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                 <div>
                   <span className="block text-[10px] text-[#787774] uppercase tracking-widest mb-1">Blood</span>
@@ -88,13 +88,13 @@ const PacketCard = ({ pkt }) => {
                   <span className="block text-[10px] text-[#787774] uppercase tracking-widest mb-1">Contact</span>
                   <span className="text-[#111111] font-medium">{pkt.ePhone || 'N/A'}</span>
                 </div>
-                
+
                 <div className="col-span-2 md:col-span-4 bg-[#FBFBFA] p-3 rounded border border-[#EAEAEA]">
                   <span className="block text-[10px] text-[#787774] uppercase tracking-widest mb-1">Chief Complaint & Notes</span>
                   <span className="text-[#111111] font-medium block">{pkt.complaint}</span>
                   {pkt.notes && <span className="text-[#787774] mt-1 block">{pkt.notes}</span>}
                 </div>
-                
+
                 <div className="col-span-2 md:col-span-4 flex flex-wrap gap-x-6 gap-y-2 bg-[#FBFBFA] p-3 rounded border border-[#EAEAEA]">
                   <div><span className="text-[10px] text-[#787774] uppercase font-bold mr-1">BP:</span> <span className="font-medium text-[#111111]">{pkt.bp}</span></div>
                   <div><span className="text-[10px] text-[#787774] uppercase font-bold mr-1">SpO2:</span> <span className="font-medium text-[#111111]">{pkt.spo2}</span></div>
@@ -113,13 +113,13 @@ const PacketCard = ({ pkt }) => {
 export default function DoctorDashboard() {
   const { installPrompt, triggerInstall } = usePWAInstall();
   const [selectedVisitId, setSelectedVisitId] = useState(null);
-  const [isSaving, setIsSaving]               = useState(false);
-  const [isOnline, setIsOnline]               = useState(navigator.onLine);
-  const [activeTab, setActiveTab]             = useState('current'); // 'current' | 'history' | 'lora'
-  const [viewingDoc, setViewingDoc]           = useState(null);
-  const [editedPatient, setEditedPatient]     = useState({});
-  const [editedVitals, setEditedVitals]       = useState({});
-  const [radioPackets, setRadioPackets]       = useState(() => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [activeTab, setActiveTab] = useState('current'); // 'current' | 'history' | 'lora'
+  const [viewingDoc, setViewingDoc] = useState(null);
+  const [editedPatient, setEditedPatient] = useState({});
+  const [editedVitals, setEditedVitals] = useState({});
+  const [radioPackets, setRadioPackets] = useState(() => {
     const saved = localStorage.getItem('lora_logs');
     return saved ? JSON.parse(saved) : [];
   });
@@ -131,7 +131,7 @@ export default function DoctorDashboard() {
   useEffect(() => {
     const unsubscribe = subscribeToLoRaRadio((data) => {
       if (data.type !== 'patient') return; // Only receive patient packets
-      
+
       setRadioPackets(prev => {
         const isDuplicate = prev.some(p => p.id === data.id && p.ts === data.ts);
         if (isDuplicate) return prev;
@@ -157,12 +157,12 @@ export default function DoctorDashboard() {
     if (!db.visits) return [];
     return db.visits.toArray().catch(e => { console.error(e); return []; });
   }, []) || [];
-  
+
   const patients = useLiveQuery(() => {
     if (!db.patients) return [];
     return db.patients.toArray().catch(e => { console.error(e); return []; });
   }, []) || [];
-  
+
   const documents = useLiveQuery(() => {
     if (!db.documents) return [];
     return db.documents.toArray().catch(e => { console.error(e); return []; });
@@ -206,13 +206,13 @@ export default function DoctorDashboard() {
   useEffect(() => {
     const current = activeQueue.find(v => v.id === selectedVisitId);
     const busyVisit = activeQueue.find(v => ['In Consultation', 'In Progress'].includes(v.status));
-    
+
     if (busyVisit && selectedVisitId !== busyVisit.id) {
-       // A patient is active/sent by ASHA, jump to them
-       setSelectedVisitId(busyVisit.id);
+      // A patient is active/sent by ASHA, jump to them
+      setSelectedVisitId(busyVisit.id);
     } else if (!current && !busyVisit && selectedVisitId) {
-       // If current is gone (deleted/completed) and no busy visit, clear selection
-       setSelectedVisitId(null);
+      // If current is gone (deleted/completed) and no busy visit, clear selection
+      setSelectedVisitId(null);
     }
   }, [activeQueue, selectedVisitId]);
 
@@ -250,22 +250,22 @@ export default function DoctorDashboard() {
   const handleCompleteConsultation = async () => {
     if (!selectedVisit) return;
     const now = new Date().toISOString();
-    
+
     // Complete current
     const update = { status: 'Completed', updated_at: now };
     await db.visits.update(selectedVisit.id, update);
     await enqueueOfflineAction('visits', 'UPDATE', { id: selectedVisit.id, ...update });
-    
+
     // Auto-advance: notify ASHA and let the doctor preview the next patient
     const nextVisit = activeQueue.find(v => v.status === 'Waiting' && v.id !== selectedVisit.id);
     if (nextVisit) {
-      broadcastLoRaPacket({ 
-        type: 'AUTO_ADVANCE', 
+      broadcastLoRaPacket({
+        type: 'AUTO_ADVANCE',
         patientId: nextVisit.patient_id,
         id: window.crypto?.randomUUID ? window.crypto.randomUUID() : Math.random().toString(),
         ts: now
       });
-      
+
       setSelectedVisitId(nextVisit.id);
     } else {
       setSelectedVisitId(null);
@@ -285,7 +285,7 @@ export default function DoctorDashboard() {
 
   return (
     <div className="min-h-[100dvh] bg-[#F7F6F3] text-[#111111] pb-10">
-      
+
       {/* HEADER */}
       <header className="sticky top-0 z-50 w-full bg-white border-b border-[#EAEAEA] mb-12 py-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
         <div className="max-w-[1400px] mx-auto px-8 flex items-center justify-between">
@@ -340,21 +340,20 @@ export default function DoctorDashboard() {
 
       {/* MAIN LAYOUT */}
       <main className="max-w-[1400px] mx-auto px-8 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-start">
-        
+
         {/* LEFT PANE */}
         <div className="bg-white border border-[#EAEAEA] rounded-xl overflow-hidden min-h-[600px] flex flex-col shadow-[0_4px_24px_rgba(0,0,0,0.02)]">
-          
+
           {/* Tabs */}
           <div className="flex gap-4 p-4 border-b border-[#EAEAEA] bg-[#FBFBFA] overflow-x-auto no-scrollbar">
             {[
               { key: 'current', label: 'Current Consultation', icon: <Stethoscope size={14} /> },
               { key: 'history', label: `History (${visitHistory.length})`, icon: <History size={14} /> },
-              { key: 'lora',    label: `Radio Receiver (${radioPackets.length})`, icon: <Radio size={14} /> }
+              { key: 'lora', label: `Radio Receiver (${radioPackets.length})`, icon: <Radio size={14} /> }
             ].map(({ key, label, icon }) => (
               <button key={key} onClick={() => setActiveTab(key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTab === key ? 'bg-[#111111] text-white' : 'text-[#787774] hover:bg-[#F7F6F3] hover:text-[#111111]'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${activeTab === key ? 'bg-[#111111] text-white' : 'text-[#787774] hover:bg-[#F7F6F3] hover:text-[#111111]'
+                  }`}
               >
                 {icon} {label}
               </button>
@@ -378,7 +377,7 @@ export default function DoctorDashboard() {
                       <h2 className="text-sm font-bold text-[#111111] uppercase tracking-widest flex items-center gap-2">
                         <Radio size={16} /> Incoming LoRa Transmissions
                       </h2>
-                      <button 
+                      <button
                         onClick={() => { setRadioPackets([]); localStorage.removeItem('lora_logs'); }}
                         className="btn-minimal-outline text-xs"
                       >
@@ -418,8 +417,8 @@ export default function DoctorDashboard() {
                               <h3 className="text-[#111111] font-bold mb-1">Patient is Waiting</h3>
                               <p className="text-[#787774] text-sm">Review the details below and start the consultation when ready.</p>
                             </div>
-                            <button 
-                              onClick={handleStartConsultation} 
+                            <button
+                              onClick={handleStartConsultation}
                               disabled={isSaving}
                               className="btn-minimal"
                             >
@@ -437,30 +436,30 @@ export default function DoctorDashboard() {
                               Triage: {selectedVisit.triage_status}
                             </span>
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {[
-                              { label: 'Full Name', name: 'name' }, 
-                              { label: 'Blood Group', name: 'blood_group' }, 
-                              { label: 'Gender', name: 'gender' }, 
+                              { label: 'Full Name', name: 'name' },
+                              { label: 'Blood Group', name: 'blood_group' },
+                              { label: 'Gender', name: 'gender' },
                               { label: 'Phone', name: 'phone' }
                             ].map(({ label, name }) => (
                               <div key={name} className="space-y-2">
                                 <label className="block text-xs font-bold text-[#787774] uppercase tracking-widest">{label}</label>
-                                <input 
-                                  type="text" 
-                                  name={name} 
-                                  value={editedPatient[name] || ''} 
+                                <input
+                                  type="text"
+                                  name={name}
+                                  value={editedPatient[name] || ''}
                                   onChange={handlePatientField}
                                   className="minimal-input"
                                 />
                               </div>
                             ))}
                           </div>
-                          
+
                           <div className="flex justify-end mt-8 border-t border-[#EAEAEA] pt-6">
-                            <button 
-                              onClick={handleSavePatientInfo} 
+                            <button
+                              onClick={handleSavePatientInfo}
                               disabled={isSaving}
                               className="btn-minimal flex items-center gap-2"
                             >
@@ -481,8 +480,8 @@ export default function DoctorDashboard() {
                             <h2 className="text-sm font-bold text-[#111111] uppercase tracking-widest flex items-center gap-2">
                               <Activity size={16} className="text-[#787774]" /> Current Vitals
                             </h2>
-                            <button 
-                              onClick={handleSaveVitals} 
+                            <button
+                              onClick={handleSaveVitals}
                               disabled={isSaving}
                               className="btn-minimal-outline flex items-center gap-2 text-xs py-1.5"
                             >
@@ -491,17 +490,17 @@ export default function DoctorDashboard() {
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                             {[
-                              { label: 'Heart Rate', name: 'heartRate' }, 
-                              { label: 'BP', name: 'bp' }, 
-                              { label: 'SpO2 (%)', name: 'spo2' }, 
+                              { label: 'Heart Rate', name: 'heartRate' },
+                              { label: 'BP', name: 'bp' },
+                              { label: 'SpO2 (%)', name: 'spo2' },
                               { label: 'Temp (°F)', name: 'temp' }
                             ].map(({ label, name }) => (
                               <div key={name} className="space-y-2">
                                 <label className="block text-xs font-bold text-[#787774] uppercase tracking-widest">{label}</label>
-                                <input 
-                                  type="text" 
-                                  name={name} 
-                                  value={editedVitals[name] || ''} 
+                                <input
+                                  type="text"
+                                  name={name}
+                                  value={editedVitals[name] || ''}
                                   onChange={handleVitalField}
                                   className="minimal-input text-center font-mono"
                                 />
@@ -521,8 +520,8 @@ export default function DoctorDashboard() {
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                               {patientDocs.map(doc => (
-                                <button 
-                                  key={doc.id} 
+                                <button
+                                  key={doc.id}
                                   onClick={() => setViewingDoc(doc)}
                                   className="flex flex-col gap-2 p-4 bg-[#FBFBFA] hover:bg-[#F9F9F8] border border-[#EAEAEA] rounded-md text-left transition-colors"
                                 >
@@ -540,8 +539,8 @@ export default function DoctorDashboard() {
 
                         <div className="flex justify-end mt-4">
                           {selectedVisit.status === 'In Progress' && (
-                            <button 
-                              onClick={handleCompleteConsultation} 
+                            <button
+                              onClick={handleCompleteConsultation}
                               disabled={isSaving}
                               className="btn-minimal flex items-center gap-2 px-8 py-3 bg-[#346538] hover:bg-[#284f2c]"
                             >
@@ -602,11 +601,10 @@ export default function DoctorDashboard() {
                 const p = patientMap[v.patient_id];
                 return (
                   <button key={v.id} onClick={() => setSelectedVisitId(v.id)}
-                    className={`flex justify-between items-center p-4 rounded-md text-left transition-all border ${
-                      isActive 
-                        ? 'bg-white border-[#111111] shadow-sm' 
+                    className={`flex justify-between items-center p-4 rounded-md text-left transition-all border ${isActive
+                        ? 'bg-white border-[#111111] shadow-sm'
                         : 'bg-white border-[#EAEAEA] hover:border-[#D4D4D4]'
-                    } border-l-4 ${triageBorder(v.triage_status)}`}
+                      } border-l-4 ${triageBorder(v.triage_status)}`}
                   >
                     <div>
                       <div className="text-sm font-bold text-[#111111] mb-2">
@@ -628,11 +626,11 @@ export default function DoctorDashboard() {
       {/* Document Viewer Modal */}
       <AnimatePresence>
         {viewingDoc && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-[9999] p-6 sm:p-12"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.98, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.98, y: 12 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
               className="bg-white border border-[#EAEAEA] rounded-xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.05)]"
@@ -646,7 +644,7 @@ export default function DoctorDashboard() {
                   <X size={16} />
                 </button>
               </div>
-              
+
               <div className="flex-1 bg-[#F7F6F3] flex items-center justify-center relative overflow-auto p-6">
                 {viewingDoc.file_url?.startsWith('data:image/') ? (
                   <img src={viewingDoc.file_url} alt="Medical Document" className="max-w-full max-h-full object-contain rounded-md shadow-sm border border-[#EAEAEA]" />
@@ -655,9 +653,9 @@ export default function DoctorDashboard() {
                     <embed src={viewingDoc.file_url} type="application/pdf" className="w-full h-full rounded-md shadow-sm border border-[#EAEAEA]" />
                     <div className="absolute bottom-8 bg-white p-6 rounded-xl text-center border border-[#EAEAEA] shadow-lg max-w-sm">
                       <p className="text-[#787774] text-sm mb-4">If the document is blank, your browser blocked the PDF preview.</p>
-                      <a 
-                        href={viewingDoc.file_url} 
-                        download={`${currentPatient?.name}_${viewingDoc.document_type}`} 
+                      <a
+                        href={viewingDoc.file_url}
+                        download={`${currentPatient?.name}_${viewingDoc.document_type}`}
                         className="btn-minimal inline-block w-full"
                       >
                         Download PDF to View
@@ -666,14 +664,14 @@ export default function DoctorDashboard() {
                   </div>
                 )}
               </div>
-              
+
               <div className="p-6 bg-white border-t border-[#EAEAEA] flex justify-between items-center">
                 <span className="text-xs font-mono text-[#787774]">
                   Uploaded on {new Date(viewingDoc.uploaded_at).toLocaleString()}
                 </span>
-                <a 
-                  href={viewingDoc.file_url} 
-                  download={`${currentPatient?.name}_${viewingDoc.document_type}`} 
+                <a
+                  href={viewingDoc.file_url}
+                  download={`${currentPatient?.name}_${viewingDoc.document_type}`}
                   className="btn-minimal-outline"
                 >
                   Download Original
