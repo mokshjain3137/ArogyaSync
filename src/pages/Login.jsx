@@ -1,18 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { isSupabaseConfigured, signIn } from '../lib/supabase';
-import { Activity, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Activity, ShieldCheck, ChevronRight, Wifi, WifiOff } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export default function Login() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   
   const [role, setRole] = useState('asha'); // 'asha' or 'doctor'
   const [phcNo, setPhcNo] = useState('');
   const [doctorNo, setDoctorNo] = useState('');
   const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const handleOfflineContinue = () => {
     const cleanPhc = (phcNo || 'PHC-DEMO-01').trim().toUpperCase();
@@ -23,7 +35,13 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!isSupabaseConfigured) {
+    const cleanPhc = (phcNo || 'PHC-DEMO-01').trim().toUpperCase();
+    const cleanDoc = doctorNo.trim().toUpperCase();
+    
+    localStorage.setItem('current_phc', cleanPhc);
+
+    // If device is offline or Supabase is unconfigured, bypass cloud directly
+    if (!navigator.onLine || !isSupabaseConfigured) {
       handleOfflineContinue();
       return;
     }
@@ -31,34 +49,54 @@ export default function Login() {
     setLoading(true);
     setError(null);
     
-    const cleanPhc = phcNo.trim().toUpperCase();
-    const cleanDoc = doctorNo.trim().toUpperCase();
-    
-    localStorage.setItem('current_phc', cleanPhc);
-    
     const email = role === 'asha' 
       ? `asha-${cleanPhc.toLowerCase()}@arogyasync.com` 
       : `doc-${cleanPhc.toLowerCase()}-${cleanDoc.toLowerCase()}@arogyasync.com`;
     
-    const { user, profile, error: signInError } = await signIn(email, password);
-    
-    if (signInError) {
-      setError(signInError);
-    } else if (!profile) {
-      setError("User profile not found or role is missing.");
-      await signIn('', ''); // trigger sign out essentially, or we can just signOut
-    } else {
-      // Navigate strictly based on the profile's actual role
-      sessionStorage.setItem('offline_role', profile.role);
-      if (profile.role === 'doctor') {
-        navigate('/doctor');
-      } else if (profile.role === 'asha') {
-        navigate('/asha');
-      } else {
-        setError("Invalid user role detected.");
+    try {
+      // Race sign-in against a 3.5s timeout so dropped networks don't stall the user
+      const signInPromise = signIn(email, password);
+      const timeoutPromise = new Promise((resolve) => 
+        setTimeout(() => resolve({ error: 'TIMEOUT_OFFLINE' }), 3500)
+      );
+
+      const res = await Promise.race([signInPromise, timeoutPromise]);
+      const { profile, error: signInError } = res || {};
+
+      // If network unreachable, offline, or request timed out, fall back seamlessly
+      const isNetworkIssue =
+        signInError === 'TIMEOUT_OFFLINE' ||
+        (signInError && (
+          signInError.toLowerCase().includes('fetch') ||
+          signInError.toLowerCase().includes('network') ||
+          signInError.toLowerCase().includes('failed') ||
+          signInError.toLowerCase().includes('timeout') ||
+          signInError.toLowerCase().includes('abort') ||
+          signInError.toLowerCase().includes('connection')
+        ));
+
+      if (isNetworkIssue) {
+        console.warn(`[Login] Supabase server unreachable (${signInError}). Falling back to Local Offline Node.`);
+        sessionStorage.setItem('offline_role', role);
+        navigate(role === 'doctor' ? '/doctor' : '/asha');
+        return;
       }
+
+      if (signInError) {
+        // If wrong password / credentials on cloud, show message with 1-click offline bypass
+        setError(signInError);
+      } else {
+        const userRole = profile?.role || role;
+        sessionStorage.setItem('offline_role', userRole);
+        navigate(userRole === 'doctor' ? '/doctor' : '/asha');
+      }
+    } catch (err) {
+      console.warn('[Login] Exception during sign in, continuing offline:', err);
+      sessionStorage.setItem('offline_role', role);
+      navigate(role === 'doctor' ? '/doctor' : '/asha');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -111,7 +149,7 @@ export default function Login() {
                   type="text"
                   value={phcNo}
                   onChange={(e) => setPhcNo(e.target.value)}
-                  placeholder="e.g. PHC-MYS-01"
+                  placeholder="e.g. PHC-MUM-01"
                   required
                   className="minimal-input bg-[#FBFBFA]"
                 />
@@ -153,8 +191,15 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="p-3 bg-[#FDEBEC] border border-[#FDEBEC] rounded-md text-[#9F2F2D] text-xs">
-                {error}
+              <div className="p-3 bg-[#FDEBEC] border border-[#FDEBEC] rounded-md text-[#9F2F2D] text-xs space-y-2">
+                <div>{error}</div>
+                <button
+                  type="button"
+                  onClick={handleOfflineContinue}
+                  className="text-[11px] font-bold text-[#111111] underline hover:opacity-80 block text-left"
+                >
+                  Enter in Offline Mode as {phcNo.trim().toUpperCase() || 'Local Node'} →
+                </button>
               </div>
             )}
 
@@ -188,9 +233,9 @@ export default function Login() {
           )}
 
           <div className="mt-6 pt-5 border-t border-[#EAEAEA] flex items-center justify-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#346538] animate-pulse"></span>
-            <p className="text-[11px] text-[#346538] font-semibold m-0">
-              Cloud Sync & Multi-Device Wi-Fi Mesh Connected
+            <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#346538] animate-pulse' : 'bg-[#956400]'}`}></span>
+            <p className={`text-[11px] font-semibold m-0 ${isOnline ? 'text-[#346538]' : 'text-[#956400]'}`}>
+              {isOnline ? 'Cloud Sync & Multi-Device Wi-Fi Mesh Connected' : 'Offline Mode (Local Storage & P2P Mesh Active)'}
             </p>
           </div>
 
