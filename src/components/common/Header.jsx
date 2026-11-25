@@ -1,10 +1,11 @@
 import React from 'react';
 import {
   Users, QrCode, Radio, Package, Stethoscope, UserCog,
-  Wifi, WifiOff, RefreshCw, LogOut, Cpu, RotateCcw
+  Wifi, WifiOff, RefreshCw, LogOut, Cpu, RotateCcw, Download
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { resetAllDatabaseData } from '../../lib/db';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 const TABS = [
   { key: 'queue',     label: 'Smart Queue',   icon: <Users size={16} /> },
@@ -16,6 +17,8 @@ const TABS = [
 ];
 
 export function Header({ activeTab, setActiveTab, isOnline, toggleOnline, onManualSync, onSignOut }) {
+  const { installPrompt, triggerInstall } = usePWAInstall();
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-xl border-b border-[#EAEAEA] mb-12">
       <div className="max-w-5xl mx-auto px-6">
@@ -61,6 +64,17 @@ export function Header({ activeTab, setActiveTab, isOnline, toggleOnline, onManu
               >
                 <RefreshCw size={14} /> 
                 <span>Sync</span>
+              </button>
+            )}
+
+            {installPrompt && (
+              <button
+                onClick={triggerInstall}
+                className="btn-minimal-outline flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[#111111] bg-[#F7F6F3] border-[#EAEAEA] hover:bg-[#EAEAEA]"
+                title="Install ArogyaSync as an Offline Desktop App"
+              >
+                <Download size={13} />
+                <span>Install App</span>
               </button>
             )}
 

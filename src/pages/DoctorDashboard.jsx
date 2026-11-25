@@ -7,9 +7,10 @@ import { subscribeToLoRaRadio, broadcastLoRaPacket } from '../lib/loraRadio';
 import {
   User, Activity, FileText, History, ChevronRight, CheckCircle, Save,
   Stethoscope, Wifi, WifiOff, Users, X, BookOpen, ClipboardList, Radio,
-  RefreshCw, ShieldAlert, CheckCircle2, LogOut, RotateCcw
+  RefreshCw, ShieldAlert, CheckCircle2, LogOut, RotateCcw, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 const TRIAGE_PRIORITY = { Red: 1, Yellow: 2, Green: 3 };
 
@@ -110,6 +111,7 @@ const PacketCard = ({ pkt }) => {
 };
 
 export default function DoctorDashboard() {
+  const { installPrompt, triggerInstall } = usePWAInstall();
   const [selectedVisitId, setSelectedVisitId] = useState(null);
   const [isSaving, setIsSaving]               = useState(false);
   const [isOnline, setIsOnline]               = useState(navigator.onLine);
@@ -301,6 +303,15 @@ export default function DoctorDashboard() {
               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
               <span>{isOnline ? 'Online Synced' : 'Offline Mode'}</span>
             </div>
+            {installPrompt && (
+              <button
+                onClick={triggerInstall}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#EAEAEA] bg-[#F7F6F3] text-xs font-medium text-[#111111] hover:bg-[#EAEAEA] transition-colors cursor-pointer"
+                title="Install ArogyaSync as an Offline Desktop App"
+              >
+                <Download size={13} /> Install App
+              </button>
+            )}
             <button
               onClick={async () => {
                 if (window.confirm('Reset all patient queues, vitals, and logs to clean initial state?')) {
