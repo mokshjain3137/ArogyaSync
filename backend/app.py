@@ -275,6 +275,18 @@ def get_queue():
     })
 
 
+@app.post('/api/lora/reset')
+def reset_lora_queue():
+    """Clear transmission log and queue."""
+    global _tx_log, _tx_queue
+    with _queue_lock:
+        _tx_queue.clear()
+        _tx_log = []
+    logger.info("[Reset] LoRa transmission log and queue wiped.")
+    return jsonify({'success': True, 'message': 'LoRa queue and logs cleared'})
+
+
+
 # ── Entry Point ────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     logger.info(f"ArogyaSync LoRa Middleware starting on port {PORT}")
