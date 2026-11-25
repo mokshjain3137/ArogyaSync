@@ -20,6 +20,14 @@ export function ProtectedRoute({ children, requiredRole }) {
   const [status, setStatus] = useState('checking'); // 'checking' | 'allowed' | 'denied' | 'wrong-role'
 
   useEffect(() => {
+    const offlineRole = sessionStorage.getItem('offline_role');
+    if (offlineRole) {
+      if (!requiredRole || offlineRole === requiredRole) {
+        setStatus('allowed');
+        return;
+      }
+    }
+
     if (!isSupabaseConfigured) {
       setStatus('allowed');
       return;
@@ -27,7 +35,11 @@ export function ProtectedRoute({ children, requiredRole }) {
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
-        setStatus('denied');
+        if (offlineRole) {
+          setStatus('allowed');
+        } else {
+          setStatus('denied');
+        }
         return;
       }
 
@@ -36,17 +48,25 @@ export function ProtectedRoute({ children, requiredRole }) {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
 
-      if (profile?.role === requiredRole) {
-        setStatus('allowed');
-      } else {
-        setStatus('wrong-role');
+        if (profile?.role === requiredRole) {
+          setStatus('allowed');
+        } else if (offlineRole === requiredRole) {
+          setStatus('allowed');
+        } else {
+          setStatus('wrong-role');
+        }
+      } catch {
+        setStatus(offlineRole === requiredRole ? 'allowed' : 'denied');
       }
+    }).catch(() => {
+      setStatus(offlineRole === requiredRole ? 'allowed' : 'denied');
     });
   }, [requiredRole]);
 

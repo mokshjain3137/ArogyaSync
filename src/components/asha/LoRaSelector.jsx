@@ -37,6 +37,10 @@ export function LoRaSelector() {
     localStorage.setItem('asha_lora_logs', JSON.stringify(transmissionLog));
   }, [transmissionLog]);
 
+  useEffect(() => {
+    handleCheckBackend();
+  }, []);
+
   const handleToggleVisit = (visitId) => {
     setSelectedVisitIds((prev) =>
       prev.includes(visitId) ? prev.filter((id) => id !== visitId) : [...prev, visitId]
@@ -244,7 +248,7 @@ export function LoRaSelector() {
             disabled={statusChecking}
             className={`flex items-center gap-2 px-4 py-2 rounded-md border text-sm transition-transform cursor-pointer ${
               backendStatus === 'online' ? 'bg-[#EDF3EC] border-transparent text-[#346538]' : 
-              backendStatus === 'offline' ? 'bg-[#FDEBEC] border-transparent text-[#9F2F2D]' : 
+              backendStatus === 'offline' ? 'bg-[#FBF3DB] border-transparent text-[#956400]' : 
               'bg-[#F9F9F8] border-[#EAEAEA] text-[#111111] hover:scale-95'
             }`}
           >
@@ -256,9 +260,9 @@ export function LoRaSelector() {
             {statusChecking 
               ? 'Checking...' 
               : backendStatus === 'online' 
-                ? 'Backend Online' 
+                ? 'LoRa Gateway Online' 
                 : backendStatus === 'offline' 
-                  ? 'Backend Offline (Simulating)' 
+                  ? 'LoRa Simulator Active' 
                   : 'Check Backend'}
           </button>
         </div>

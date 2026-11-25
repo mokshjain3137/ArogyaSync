@@ -6,7 +6,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   User, Activity, FileText, History, ChevronRight, CheckCircle, Save,
   Stethoscope, Wifi, WifiOff, Users, X, BookOpen, ClipboardList, Radio,
-  RefreshCw, ShieldAlert, CheckCircle2
+  RefreshCw, ShieldAlert, CheckCircle2, LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -299,6 +299,16 @@ export default function DoctorDashboard() {
               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
               <span>{isOnline ? 'Online Synced' : 'Offline Mode'}</span>
             </div>
+            <button
+              onClick={async () => {
+                sessionStorage.removeItem('offline_role');
+                if (isSupabaseConfigured) await supabase.auth.signOut();
+                window.location.href = '/login';
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#EAEAEA] bg-white text-xs font-medium text-[#787774] hover:text-[#9F2F2D] hover:border-[#FDEBEC] transition-colors cursor-pointer"
+            >
+              <LogOut size={13} /> Sign Out
+            </button>
           </div>
         </div>
       </header>

@@ -51,6 +51,7 @@ export default function AshaDashboard() {
   };
 
   const handleSignOut = async () => {
+    sessionStorage.removeItem('offline_role');
     if (isSupabaseConfigured) await signOut();
     navigate('/login', { replace: true });
   };

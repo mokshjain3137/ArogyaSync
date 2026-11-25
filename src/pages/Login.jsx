@@ -14,10 +14,17 @@ export default function Login() {
   const [doctorNo, setDoctorNo] = useState('');
   const [password, setPassword] = useState('');
 
+  const handleOfflineContinue = () => {
+    const cleanPhc = (phcNo || 'PHC-DEMO-01').trim().toUpperCase();
+    localStorage.setItem('current_phc', cleanPhc);
+    sessionStorage.setItem('offline_role', role);
+    navigate(role === 'doctor' ? '/doctor' : '/asha');
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!isSupabaseConfigured) {
-      navigate(role === 'doctor' ? '/doctor' : '/asha');
+      handleOfflineContinue();
       return;
     }
     
@@ -42,6 +49,7 @@ export default function Login() {
       await signIn('', ''); // trigger sign out essentially, or we can just signOut
     } else {
       // Navigate strictly based on the profile's actual role
+      sessionStorage.setItem('offline_role', profile.role);
       if (profile.role === 'doctor') {
         navigate('/doctor');
       } else if (profile.role === 'asha') {
@@ -157,6 +165,14 @@ export default function Login() {
             >
               {loading ? 'Authenticating...' : 'Secure Sign In'}
               {!loading && <ChevronRight size={16} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOfflineContinue}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-md border border-[#EAEAEA] bg-[#FBFBFA] hover:bg-[#F0EFEB] text-xs font-semibold text-[#111111] transition-colors cursor-pointer"
+            >
+              Continue in Offline / Field Mode ({role === 'doctor' ? 'Doctor' : 'ASHA'}) →
             </button>
           </form>
 

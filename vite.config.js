@@ -8,11 +8,11 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    allowedHosts: ['arogyasync-80w9.onrender.com']
+    allowedHosts: ['arogyasync-80w9.onrender.com', 'arogya-sync-ten.vercel.app']
   },
   preview: {
     port: 3000,
     host: true,
-    allowedHosts: ['arogyasync-80w9.onrender.com']
+    allowedHosts: ['arogyasync-80w9.onrender.com', 'arogya-sync-ten.vercel.app']
   }
 });
