@@ -69,7 +69,7 @@ export const broadcastLoRaPacket = (packet) => {
 
   const bleStatus = bleBridge.getStatus();
   const carrier = bleStatus.connected
-    ? `Bluetooth LE (${bleStatus.deviceName || 'Mesh'})`
+    ? 'Bluetooth LE Mesh'
     : (navigator.onLine ? 'Wi-Fi / Cloud Mesh' : 'Local RF Simulation');
 
   const enrichedPacket = {

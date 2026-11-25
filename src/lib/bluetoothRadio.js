@@ -74,11 +74,19 @@ class BluetoothBridge {
     }
   }
 
-  toggleEmulated() {
-    this.isEmulated = !this.isEmulated;
-    localStorage.setItem('ble_emulated_connected', String(this.isEmulated));
-    this._notify();
+  toggle() {
+    if (this.isConnected()) {
+      this.disconnect();
+    } else {
+      this.isEmulated = true;
+      localStorage.setItem('ble_emulated_connected', 'true');
+      this._notify();
+    }
     return this.getStatus();
+  }
+
+  toggleEmulated() {
+    return this.toggle();
   }
 
   disconnect() {

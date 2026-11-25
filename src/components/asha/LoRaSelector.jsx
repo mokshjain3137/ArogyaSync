@@ -40,16 +40,8 @@ export function LoRaSelector() {
     return bleBridge.subscribe(setBleStatus);
   }, []);
 
-  const handleToggleBluetooth = async () => {
-    try {
-      if (bleBridge.isSupported()) {
-        await bleBridge.connectHardware();
-      } else {
-        bleBridge.toggleEmulated();
-      }
-    } catch {
-      bleBridge.toggleEmulated();
-    }
+  const handleToggleBluetooth = () => {
+    bleBridge.toggle();
   };
 
   useEffect(() => {
