@@ -22,6 +22,8 @@ db.version(3).stores({
   sync_queue: '++id, table_name, action, timestamp, status'
 });
 
+export const CURRENT_SEED_VERSION = 'v2_clean_reset_2026';
+
 // Helper: UUID generator (works offline)
 export const generateUUID = () => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -34,72 +36,63 @@ export const generateUUID = () => {
   });
 };
 
-export const seedInitialData = async () => {
-  if (window.__AROGYASYNC_SEEDED) return;
-  window.__AROGYASYNC_SEEDED = true;
-
-  const count = await db.patients.count();
-  if (count > 0) {
-    // Deduplicate logic in case HMR previously created clones
-    const allPatients = await db.patients.toArray();
-    const seenNames = new Set();
-    const duplicateIds = [];
-    for (const p of allPatients) {
-      if (seenNames.has(p.name)) {
-        duplicateIds.push(p.id);
-      } else {
-        seenNames.add(p.name);
-      }
-    }
-    if (duplicateIds.length > 0) {
-      console.log(`[ArogyaSync] Removing ${duplicateIds.length} cloned patients...`);
-      await db.patients.bulkDelete(duplicateIds);
-      
-      // Also clean up duplicate visits for those cloned patients
-      const allVisits = await db.visits.toArray();
-      const duplicateVisitIds = allVisits.filter(v => duplicateIds.includes(v.patient_id)).map(v => v.id);
-      if (duplicateVisitIds.length > 0) {
-        await db.visits.bulkDelete(duplicateVisitIds);
-      }
-    }
-
-    // Deduplicate Doctors
-    const allDoctors = await db.doctors.toArray();
-    const seenDocs = new Set();
-    const duplicateDocIds = [];
-    for (const d of allDoctors) {
-      if (seenDocs.has(d.full_name)) {
-        duplicateDocIds.push(d.id);
-      } else {
-        seenDocs.add(d.full_name);
-      }
-    }
-    if (duplicateDocIds.length > 0) {
-      console.log(`[ArogyaSync] Removing ${duplicateDocIds.length} cloned doctors...`);
-      await db.doctors.bulkDelete(duplicateDocIds);
-    }
-
-    // Deduplicate Inventory
-    const allInventory = await db.inventory.toArray();
-    const seenItems = new Set();
-    const duplicateItemIds = [];
-    for (const item of allInventory) {
-      if (seenItems.has(item.item_name)) {
-        duplicateItemIds.push(item.id);
-      } else {
-        seenItems.add(item.item_name);
-      }
-    }
-    if (duplicateItemIds.length > 0) {
-      console.log(`[ArogyaSync] Removing ${duplicateItemIds.length} cloned inventory items...`);
-      await db.inventory.bulkDelete(duplicateItemIds);
-    }
-    
-    console.log('[ArogyaSync] Database already seeded, skipping.');
-    return;
+export const resetAllDatabaseData = async () => {
+  console.log('[ArogyaSync] Resetting all local database tables and logs...');
+  window.__AROGYASYNC_SEEDED = false;
+  try {
+    await db.patients.clear();
+    await db.doctors.clear();
+    await db.visits.clear();
+    await db.inventory.clear();
+    await db.documents.clear();
+    await db.sync_queue.clear();
+  } catch (err) {
+    console.warn('[ArogyaSync] Error clearing tables:', err);
   }
 
-  console.log('[ArogyaSync] Force-clearing old data and seeding realistic data into IndexedDB...');
+  try {
+    localStorage.removeItem('lora_gateway_packets');
+    localStorage.removeItem('lora_logs');
+    localStorage.removeItem('asha_lora_logs');
+    localStorage.removeItem('ble_emulated_connected');
+    localStorage.setItem('arogya_db_version', CURRENT_SEED_VERSION);
+  } catch (err) {
+    console.warn('[ArogyaSync] Error clearing logs:', err);
+  }
+
+  await seedInitialData(true);
+  console.log('[ArogyaSync] Database reset complete.');
+};
+
+export const seedInitialData = async (force = false) => {
+  const storedVersion = typeof localStorage !== 'undefined' ? localStorage.getItem('arogya_db_version') : null;
+  const needsVersionUpgrade = storedVersion !== CURRENT_SEED_VERSION;
+
+  if (!force && !needsVersionUpgrade && window.__AROGYASYNC_SEEDED) return;
+  window.__AROGYASYNC_SEEDED = true;
+
+  if (needsVersionUpgrade || force) {
+    console.log('[ArogyaSync] Resetting stale/junk data to clean seed version...');
+    await db.patients.clear();
+    await db.doctors.clear();
+    await db.visits.clear();
+    await db.inventory.clear();
+    await db.documents.clear();
+    await db.sync_queue.clear();
+    try {
+      localStorage.removeItem('lora_gateway_packets');
+      localStorage.removeItem('lora_logs');
+      localStorage.removeItem('asha_lora_logs');
+      localStorage.setItem('arogya_db_version', CURRENT_SEED_VERSION);
+    } catch {}
+  } else {
+    const count = await db.patients.count();
+    if (count > 0) {
+      return;
+    }
+  }
+
+  console.log('[ArogyaSync] Seeding clean, realistic clinical data into IndexedDB...');
 
   await db.patients.clear();
   await db.doctors.clear();

@@ -1,9 +1,10 @@
 import React from 'react';
 import {
   Users, QrCode, Radio, Package, Stethoscope, UserCog,
-  Wifi, WifiOff, RefreshCw, LogOut, Cpu
+  Wifi, WifiOff, RefreshCw, LogOut, Cpu, RotateCcw
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { resetAllDatabaseData } from '../../lib/db';
 
 const TABS = [
   { key: 'queue',     label: 'Smart Queue',   icon: <Users size={16} /> },
@@ -62,6 +63,20 @@ export function Header({ activeTab, setActiveTab, isOnline, toggleOnline, onManu
                 <span>Sync</span>
               </button>
             )}
+
+            <button 
+              onClick={async () => {
+                if (window.confirm('Reset all patient queues, vitals, and logs to clean initial state?')) {
+                  await resetAllDatabaseData();
+                  window.location.reload();
+                }
+              }} 
+              className="btn-minimal-outline flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[#787774] hover:text-[#9F2F2D]"
+              title="Reset all data to clean initial state"
+            >
+              <RotateCcw size={13} />
+              <span>Reset</span>
+            </button>
 
             {onSignOut && (
               <button 

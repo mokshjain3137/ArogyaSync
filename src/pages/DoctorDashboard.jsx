@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../lib/db';
+import { db, resetAllDatabaseData } from '../lib/db';
 import { enqueueOfflineAction } from '../lib/syncManager';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { subscribeToLoRaRadio, broadcastLoRaPacket } from '../lib/loraRadio';
 import {
   User, Activity, FileText, History, ChevronRight, CheckCircle, Save,
   Stethoscope, Wifi, WifiOff, Users, X, BookOpen, ClipboardList, Radio,
-  RefreshCw, ShieldAlert, CheckCircle2, LogOut
+  RefreshCw, ShieldAlert, CheckCircle2, LogOut, RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -301,6 +301,18 @@ export default function DoctorDashboard() {
               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
               <span>{isOnline ? 'Online Synced' : 'Offline Mode'}</span>
             </div>
+            <button
+              onClick={async () => {
+                if (window.confirm('Reset all patient queues, vitals, and logs to clean initial state?')) {
+                  await resetAllDatabaseData();
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#EAEAEA] bg-white text-xs font-medium text-[#787774] hover:text-[#9F2F2D] hover:border-[#FDEBEC] transition-colors cursor-pointer"
+              title="Reset all data to clean initial state"
+            >
+              <RotateCcw size={13} /> Reset Data
+            </button>
             <button
               onClick={async () => {
                 sessionStorage.removeItem('offline_role');
