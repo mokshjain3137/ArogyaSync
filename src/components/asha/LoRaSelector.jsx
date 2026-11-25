@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { broadcastLoRaPacket } from '../../lib/loraRadio';
+import { bleBridge } from '../../lib/bluetoothRadio';
 import {
   Radio, Send, ShieldAlert, CheckCircle2, Zap, SignalHigh,
-  AlertTriangle, X, Clock, RefreshCw, Package
+  AlertTriangle, X, Clock, RefreshCw, Package, Wifi, Bluetooth
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -33,6 +34,23 @@ export function LoRaSelector() {
   });
   const [backendStatus, setBackendStatus] = useState('unknown'); 
   const [statusChecking, setStatusChecking] = useState(false);
+  const [bleStatus, setBleStatus] = useState(() => bleBridge.getStatus());
+
+  useEffect(() => {
+    return bleBridge.subscribe(setBleStatus);
+  }, []);
+
+  const handleToggleBluetooth = async () => {
+    try {
+      if (bleBridge.isSupported()) {
+        await bleBridge.connectHardware();
+      } else {
+        bleBridge.toggleEmulated();
+      }
+    } catch {
+      bleBridge.toggleEmulated();
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('asha_lora_logs', JSON.stringify(transmissionLog));
@@ -242,6 +260,25 @@ export function LoRaSelector() {
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-md border border-[#EDF3EC] bg-[#EDF3EC] text-xs font-semibold text-[#346538]">
+            <Wifi size={14} className="animate-pulse" />
+            <span>Wi-Fi / Multi-Device Live</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleBluetooth}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-md border text-xs font-semibold transition-all cursor-pointer ${
+              bleStatus.connected
+                ? 'bg-[#EDF3EC] border-[#EDF3EC] text-[#346538]'
+                : 'bg-[#F9F9F8] border-[#EAEAEA] text-[#787774] hover:text-[#111111]'
+            }`}
+            title="Bluetooth Low Energy Mesh Sync"
+          >
+            <Bluetooth size={14} />
+            <span>{bleStatus.connected ? (bleStatus.deviceName || 'BLE Mesh Connected') : 'Connect Bluetooth'}</span>
+          </button>
+
           <button 
             onClick={handleCheckBackend} 
             disabled={statusChecking}

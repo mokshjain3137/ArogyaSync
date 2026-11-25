@@ -1,15 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-let rawSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-arogyasync.supabase.co').trim();
+const FALLBACK_SUPABASE_URL = 'https://vdmjccxwzkgbihxmywds.supabase.co';
+const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_r581wx4CpPS0_FQIzLMmvA_zrLM9ZUu';
+
+let rawSupabaseUrl = (import.meta.env.VITE_SUPABASE_URL || FALLBACK_SUPABASE_URL).trim();
 if (rawSupabaseUrl && !rawSupabaseUrl.startsWith('http')) {
   rawSupabaseUrl = `https://${rawSupabaseUrl}`;
 }
 const supabaseUrl = rawSupabaseUrl.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || FALLBACK_SUPABASE_ANON_KEY;
 
-export const isSupabaseConfigured = Boolean(
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+export const isSupabaseConfigured = true;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

@@ -57,9 +57,14 @@ const PacketCard = ({ pkt }) => {
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-4">
               <div className="flex justify-between items-center border-b border-[#EAEAEA] pb-3">
-                <span className="text-sm font-bold text-[#111111]">
-                  Patient: {pkt.name}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-bold text-[#111111]">
+                    Patient: {pkt.name}
+                  </span>
+                  <span className="text-[10px] bg-white border border-[#EAEAEA] text-[#346538] font-bold px-2 py-0.5 rounded shadow-xs">
+                    📡 {pkt.carrier || 'Wi-Fi / Mesh'}
+                  </span>
+                </div>
                 <span className="text-[10px] text-[#346538] font-bold bg-[#EDF3EC] px-2 py-1 rounded-sm uppercase tracking-wider">
                   Decoded
                 </span>

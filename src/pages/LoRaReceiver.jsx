@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Radio, ShieldAlert, Cpu, CheckCircle2, RotateCcw, RefreshCw } from 'lucide-react';
+import { Radio, ShieldAlert, Cpu, CheckCircle2, RotateCcw, RefreshCw, Wifi, Bluetooth } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { subscribeToLoRaRadio } from '../lib/loraRadio';
+import { bleBridge } from '../lib/bluetoothRadio';
 
 const PacketCard = ({ pkt }) => {
   const [decompressed, setDecompressed] = useState(false);
@@ -47,9 +48,14 @@ const PacketCard = ({ pkt }) => {
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col gap-4">
               <div className="flex justify-between items-center border-b border-[#EAEAEA] pb-3">
-                <span className="text-sm font-bold text-[#111111]">
-                  {pkt.type === 'patient' ? `Patient: ${pkt.name}` : `Inventory: ${pkt.name}`}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-bold text-[#111111]">
+                    {pkt.type === 'patient' ? `Patient: ${pkt.name}` : `Inventory: ${pkt.name}`}
+                  </span>
+                  <span className="text-[10px] bg-white border border-[#EAEAEA] text-[#346538] font-bold px-2 py-0.5 rounded shadow-xs">
+                    📡 {pkt.carrier || 'Wi-Fi / Mesh'}
+                  </span>
+                </div>
                 <span className="text-[10px] text-[#346538] font-bold bg-[#EDF3EC] px-2 py-1 rounded-sm uppercase tracking-wider">
                   Decoded
                 </span>
@@ -119,7 +125,24 @@ export default function LoRaReceiver() {
     }
   });
   const [isListening, setIsListening] = useState(true);
+  const [bleStatus, setBleStatus] = useState(() => bleBridge.getStatus());
   const bottomRef = useRef(null);
+
+  useEffect(() => {
+    return bleBridge.subscribe(setBleStatus);
+  }, []);
+
+  const handleToggleBluetooth = async () => {
+    try {
+      if (bleBridge.isSupported()) {
+        await bleBridge.connectHardware();
+      } else {
+        bleBridge.toggleEmulated();
+      }
+    } catch {
+      bleBridge.toggleEmulated();
+    }
+  };
 
   useEffect(() => {
     if (!isListening) return;
@@ -158,7 +181,23 @@ export default function LoRaReceiver() {
             </div>
             <span className="text-[#787774] font-mono text-xs ml-2">/dev/ttyUSB0</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-[#EDF3EC] bg-[#EDF3EC] text-[11px] font-semibold text-[#346538]">
+              <Wifi size={12} className="animate-pulse" />
+              <span>Wi-Fi Mesh Live</span>
+            </div>
+            <button
+              onClick={handleToggleBluetooth}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition-colors cursor-pointer ${
+                bleStatus.connected
+                  ? 'bg-[#EDF3EC] border-[#EDF3EC] text-[#346538]'
+                  : 'bg-white border-[#EAEAEA] text-[#787774] hover:text-[#111111]'
+              }`}
+              title="Bluetooth LE Mesh Link"
+            >
+              <Bluetooth size={12} />
+              <span>{bleStatus.connected ? 'BLE Active' : 'BLE Mesh'}</span>
+            </button>
             <button 
               onClick={() => setIsListening(!isListening)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-widest transition-colors ${

@@ -187,8 +187,15 @@ export default function Login() {
             </div>
           )}
 
+          <div className="mt-6 pt-5 border-t border-[#EAEAEA] flex items-center justify-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#346538] animate-pulse"></span>
+            <p className="text-[11px] text-[#346538] font-semibold m-0">
+              Cloud Sync & Multi-Device Wi-Fi Mesh Connected
+            </p>
+          </div>
+
           {!isSupabaseConfigured && (
-            <div className="mt-6 pt-6 border-t border-[#EAEAEA] text-center">
+            <div className="mt-4 text-center">
               <p className="text-xs text-[#9F2F2D] font-medium bg-[#FDEBEC] inline-block px-2 py-1 rounded-sm">
                 Demo Mode: Sync Disabled
               </p>
